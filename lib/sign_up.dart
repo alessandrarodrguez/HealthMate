@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-//import 'package:healthmate_2/home_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -296,9 +296,16 @@ class _SignUpState extends State<SignUp> {
       _passwordController.text.trim(),
     );
 
-    // If user is created, navigate to the home screen
+    // If user is created, save the username locally and navigate to the home screen
     if (user != null) {
+      await saveUsernameLocally(_usernameController.text.trim());
       Navigator.pushNamed(context, '/home');
     }
+  }
+
+  // Save the username locally using SharedPreferences
+  Future<void> saveUsernameLocally(String username) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('username', username);
   }
 }

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class UserProfile extends StatefulWidget {
-  const UserProfile({super.key});
+class UserCust extends StatefulWidget {
+  const UserCust({super.key});
 
   @override
-  _UserProfileState createState() => _UserProfileState();
+  _UserCustState createState() => _UserCustState();
 }
 
-class _UserProfileState extends State<UserProfile> {
+class _UserCustState extends State<UserCust> {
   final List<String> backgrounds = [
     'assets/blueBackground.png',
     'assets/greenBackground.png',
@@ -61,16 +62,44 @@ class _UserProfileState extends State<UserProfile> {
     });
   }
 
+  Future<void> _saveSelections() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('backgroundIndex', backgroundIndex);
+    await prefs.setInt('headIndex', headIndex);
+    await prefs.setInt('hairIndex', hairIndex);
+    await prefs.setInt('expressionIndex', expressionIndex);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Changes saved!")),
+    );
+  }
+
+  Future<void> _loadSelections() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      backgroundIndex = prefs.getInt('backgroundIndex') ?? 0;
+      headIndex = prefs.getInt('headIndex') ?? 0;
+      hairIndex = prefs.getInt('hairIndex') ?? 0;
+      expressionIndex = prefs.getInt('expressionIndex') ?? 0;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSelections();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xffd4a5c2),
-      appBar: AppBar(title: const Text("User Profile")),
+      backgroundColor: const Color(0xffd4a5c2),
+      appBar: AppBar(
+        title: const Text("Character Customization"),
+      ),
       body: Column(
         children: [
           const SizedBox(height: 20),
-
-          // Box that shows the selected profile look
           Container(
             width: 200,
             height: 200,
@@ -88,10 +117,7 @@ class _UserProfileState extends State<UserProfile> {
               ],
             ),
           ),
-
           const SizedBox(height: 20),
-
-          // Container with BoxDecoration to add space for other buttons
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -101,46 +127,40 @@ class _UserProfileState extends State<UserProfile> {
             ),
             child: Column(
               children: [
-                // Background selection row
                 buildSelectionRow("Background", backgrounds, (i) => setState(() => backgroundIndex = i), backgroundIndex),
-
                 const SizedBox(height: 10),
-
-                // Head selection row
                 buildSelectionRow("Head", heads, (i) => setState(() => headIndex = i), headIndex),
-
                 const SizedBox(height: 10),
-
-                // Hair selection row
                 buildSelectionRow("Hair", hairStyles, (i) => setState(() => hairIndex = i), hairIndex),
-
                 const SizedBox(height: 10),
-
-                // Expression selection row
                 buildSelectionRow("Expression", expressions, (i) => setState(() => expressionIndex = i), expressionIndex),
               ],
             ),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _saveSelections,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: const Text("Save Changes"),
           ),
         ],
       ),
     );
   }
 
-  // Creates a selection row with left and right arrows horizontally
   Widget buildSelectionRow(String title, List<String> list, Function(int) updateIndex, int currentIndex) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Left Arrow Button
         IconButton(
           icon: const Icon(Icons.arrow_left, size: 30),
           onPressed: () => cycleImage(list, -1, updateIndex, currentIndex),
         ),
-
-        // Label Name
         Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-
-        // Right Arrow Button
         IconButton(
           icon: const Icon(Icons.arrow_right, size: 30),
           onPressed: () => cycleImage(list, 1, updateIndex, currentIndex),
