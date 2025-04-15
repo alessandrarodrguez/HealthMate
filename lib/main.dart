@@ -8,6 +8,8 @@ import 'package:healthmate_2/user_cust.dart';
 import 'sign_in.dart';
 import 'sign_up.dart';
 import 'home_screen.dart';
+import 'settings.dart';
+import 'terms_and_conditions.dart';
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();  // Ensure proper initialization
@@ -31,7 +33,9 @@ class HealthMate extends StatelessWidget {
         "/passwordreset": (context) => const PasswordReset(), // Password Reset Page
         "/userprofile": (context) => const UserCust(), // Character Customization
         "/profilepage": (context) => const ProfilePage(), // Profile Page,
-        "/contactus": (context) => const ContactUs()
+        "/contactus": (context) => const ContactUs(),
+        "/termsandconditions": (context) => const TermsAndConditionsPage(),
+        "/settings": (context) => const SettingsPage()
       },
     );
   }
