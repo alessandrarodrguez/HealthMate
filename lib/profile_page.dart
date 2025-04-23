@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:healthmate_2/settings.dart';
 import 'package:healthmate_2/terms_and_conditions.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:healthmate_2/user_cust.dart'; // Import UserCust screen
-import 'package:healthmate_2/contact_us.dart'; // Import ContactUs screen
+import 'package:healthmate_2/user_cust.dart';
+import 'package:healthmate_2/contact_us.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 
 
 class ProfilePage extends StatefulWidget {
@@ -65,6 +67,10 @@ class _ProfilePageState extends State<ProfilePage> {
   int expressionIndex = 0;
   String username = ''; // stores the username
 
+  // firestore stuff
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  String? userId;
 
   // Variables for user information
   DateTime? selectedBirthday;
@@ -75,33 +81,85 @@ class _ProfilePageState extends State<ProfilePage> {
 
   // Load preferences and username
   Future<void> _loadSelections() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      backgroundIndex = prefs.getInt('backgroundIndex') ?? 0;
-      headIndex = prefs.getInt('headIndex') ?? 0;
-      hairIndex = prefs.getInt('hairIndex') ?? 0;
-      expressionIndex = prefs.getInt('expressionIndex') ?? 0;
-      username = prefs.getString('username') ?? "Guest"; // loads saved username
-      location = prefs.getString('location') ?? ''; // loads saved location
-      weight = prefs.getDouble('weight') ?? 0.0; // loads saved weight
-      height = prefs.getString('height') ?? '';
-      waist = prefs.getString('waist') ?? '';
-      butt = prefs.getString('butt') ?? '';
-      bust = prefs.getString('bust') ?? '';
+  if (userId == null) return;
 
-      String? birthdayString = prefs.getString('birthday');
-    if (birthdayString != null) {
-      selectedBirthday = DateTime.tryParse(birthdayString);
-    }
+  try {
+    // Read from 'users' collection
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .get();
+
+    // Read from 'customizations' collection
+    DocumentSnapshot customizationDoc = await FirebaseFirestore.instance
+        .collection('customizations')
+        .doc(userId)
+        .get();
+
+    setState(() {
+      // Handle 'users' data
+      if (userDoc.exists) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        username = userData['username'] ?? "Guest";
+        location = userData['location'] ?? '';
+        weight = (userData['weight'] ?? 0.0).toDouble();
+        height = userData['height'] ?? '';
+        waist = userData['waist'] ?? '';
+        butt = userData['butt'] ?? '';
+        bust = userData['bust'] ?? '';
+        if (userData['birthday'] != null) {
+          selectedBirthday = DateTime.tryParse(userData['birthday']);
+        }
+      }
+
+      // Handle 'customizations' data
+      if (customizationDoc.exists) {
+        final customizationData = customizationDoc.data() as Map<String, dynamic>;
+        backgroundIndex = customizationData['backgroundIndex'] ?? 0;
+        headIndex = customizationData['headIndex'] ?? 0;
+        hairIndex = customizationData['hairIndex'] ?? 0;
+        expressionIndex = customizationData['expressionIndex'] ?? 0;
+      }
     });
+  } catch (e) {
+    print("Failed to load profile data: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Failed to load profile: $e")),
+    );
   }
+}
+
+
+
+Future<void> _saveToFirestore() async {
+  if (userId == null) return;
+
+  await _firestore.collection('users').doc(userId).set({
+    //'backgroundIndex': backgroundIndex,
+    //'headIndex': headIndex,
+    //'hairIndex': hairIndex,
+    //'expressionIndex': expressionIndex,
+    'username': username,
+    'location': location,
+    'weight': weight,
+    'height': height,
+    'waist': waist,
+    'butt': butt,
+    'bust': bust,
+    'birthday': selectedBirthday?.toIso8601String(),
+  }, SetOptions(merge: true)); // Only updates changed fields
+}
+
+
 
 
   @override
-  void initState() {
-    super.initState();
-    _loadSelections(); // Load saved preferences and username when the page loads
-  }
+void initState() {
+  super.initState();
+  userId = _auth.currentUser?.uid;
+  _loadSelections();
+}
+
 
 
   Future<void> _pickBirthday(BuildContext context) async {
@@ -115,8 +173,7 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         selectedBirthday = pickedDate;
       });
-      final prefs = await SharedPreferences.getInstance();
-      prefs.setString('birthday', selectedBirthday!.toIso8601String());
+      await _saveToFirestore();
     }
   }
 
@@ -147,8 +204,7 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         location = newLocation;
       });
-      final prefs = await SharedPreferences.getInstance();
-      prefs.setString('location', location);
+      await _saveToFirestore();
     }
   }
 
@@ -180,8 +236,7 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         weight = double.tryParse(newWeight) ?? 0.0;
       });
-      final prefs = await SharedPreferences.getInstance();
-      prefs.setDouble('weight', weight);
+      await _saveToFirestore();
     }
   }
 
@@ -242,11 +297,7 @@ class _ProfilePageState extends State<ProfilePage> {
         butt = buttController.text;
         bust = bustController.text;
       });
-      final prefs = await SharedPreferences.getInstance();
-      prefs.setString('height', height);
-      prefs.setString('waist', waist);
-      prefs.setString('butt', butt);
-      prefs.setString('bust', bust);
+      await _saveToFirestore();
     }
   }
 
